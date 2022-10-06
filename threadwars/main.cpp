@@ -1,6 +1,7 @@
 #include <iostream>
 #include <ncurses.h>
 #include <thread>
+#include <chrono>
 
 using namespace std;
 
@@ -9,6 +10,7 @@ int height = 25;
 
 int gunX = width / 2;
 int gunY = height - 1;
+int debug = 0;
 
 int direction = -1;
 
@@ -30,7 +32,7 @@ void CreateBullet() {
     if (bulletsOnTheScreen == 3) {
         return;
     }
-    
+        
     // Adding a next bullet to the array (fire the bullet)
     
     // max amount of bullets is 3, todo: move it to a constant and initialize during the setup phase
@@ -43,13 +45,15 @@ void CreateBullet() {
             for (int j = 0; j < 2; j++) {
                 bullets[i][j] = bullet[j];
             }
+            break;
         }
     }
     
     bool isBulletOnScreen = true;
     
-    while ((isBulletOnScreen = bullet[1] > 0)) {
-        bullet[1]--;
+    while ((isBulletOnScreen = bullets[indexOfBullet][1] > 0)) {
+        bullets[indexOfBullet][1]--;
+        this_thread::sleep_for(chrono::milliseconds(100));
     }
     
      bullets[indexOfBullet] = NULL;
@@ -94,22 +98,37 @@ void Draw()
     {
         if (i == gunY && j == gunX) {
           printw("X");
+          continue;
         }
  
         if (i == 0 || i == height || j == 0 || j == width) {
           printw("#");
+          continue;
         }
+        
+        bool isBulletFound = false;
         
         for (int k = 0; k < 3; k++) {
             if (bullets[k] && bullets[k][1] == i && bullets[k][0] == j) {
+                isBulletFound = true;
                 printw("x");
             }
+        }
+        
+        if (isBulletFound) {
+            continue;
         }
 
         printw(" ");
     }
       printw("\n");
   }
+    for (int i = 0; i < 3; i++) {
+        if (bullets[i]) {
+            printw("%d ", bullets[i][0]);
+            printw("%d\n\n", bullets[i][1]);
+        }
+    }
 }
 
 void Input()
@@ -122,8 +141,9 @@ void Input()
             direction = 0;
             break;
         case 32: {
+//            CreateBullet();
             thread trackBullet(CreateBullet);
-            trackBullet.join();
+            trackBullet.detach();
             return;
         }
         default:
@@ -152,9 +172,9 @@ int main() {
     while (true) {
         // First get input from the user, then claculate the changes, then draw the updates
         Input();
+        erase();
         // Erase shall be kept under the Input call. Otherwise flickering happens. This is because
         // erase should never be called after the wgetch();
-        erase();
         Logic();
         Draw();
         refresh();
