@@ -11,10 +11,14 @@ int height = 25;
 int gunX = width / 2;
 int gunY = height - 1;
 int debug = 0;
+int chanceOfEnemySpawn = 20;
+
+int enemyTimerMs = 1000;
 
 int direction = -1;
 
 int** bullets = new int*[3];
+int** enemies = new int*[25];
 
 void CreateBullet() {
     int bullet[2] = { gunX, gunY };
@@ -57,37 +61,58 @@ void CreateBullet() {
     }
     
      bullets[indexOfBullet] = NULL;
-    
-//    int indexOfBullet = -1;
-//
-//    if (bulletsOnTheScreen == 3) {
-//        bullets[0] = new int[2];
-//
-//        for (int j = 0; j < 2; j++) {
-//            bullets[0][j] = bullet[j];
-//        }
-//    } else {
-//        for (int i = 0; i < 3; i++ ) {
-//            if (!bullets[i]) {
-//                bullets[i] = new int[2];
-//                for (int j = 0; j < 2; j++) {
-//                    bullets[i][j] = bullet[j];
-//                }
-//            }
-//        }
-//    }
-    
-//    int numberOfBullets = sizeof(bullets) / sizeof(bullets[0]);
-    
-//    for (int i = 0; i < numberOfBullets; i++) {
-//        if (bullets[i + 1]) {
-//            bullets[i] = bullets[i + 1];
-//        } else {
-//            break;
-//        }
-//    }
-//
-//    bullets[numberOfBullets - 1] = { bulletX, bulletY };
+}
+
+void CreateEnemy() {
+    while (true) {
+        // calculate chance of enemy spawn
+        int chance = rand() % 101;
+        
+        debug = chance;
+        
+        if (chance < chanceOfEnemySpawn) {
+        
+            // todo: increase a chance of enemy spawn
+            int enemiesCount = 0;
+            
+            for (int i = 0; i < 25; i++) {
+                if (enemies[i]) {
+                    enemiesCount++;
+                }
+            }
+            
+            // we don't need to create more than MAX_ENEMIES enemies
+            if (enemiesCount == 25) {
+                return;
+            }
+            
+            for (int i = 0; i < 25; i++) {
+                if (!enemies[i]) {
+                    enemies[i] = new int[2];
+                    enemies[i][0] = rand() % width;
+                    enemies[i][1] = 1 + (rand() % 2);
+                    // add a single enemy, then sleep for 1 second
+                    break;
+                }
+            }
+        }
+            
+        this_thread::sleep_for(chrono::milliseconds(1000));
+        
+        for (int i = 0; i < 25; i++) {
+            if (enemies[i]) {
+                int maxDirectionNumber = 1;
+                int minDirectionNumber = -1;
+                // todo: move to the application config
+                // nextDirection shall be random so that a user doesn't know where to move the gun preventively
+                int nextDirection = rand() % (maxDirectionNumber + 1 - minDirectionNumber) + minDirectionNumber;
+                if (enemies[i][0] + nextDirection < width) {
+                    enemies[i][0] += nextDirection;
+                }
+                enemies[i][1] += 1;
+            }
+        }
+    }
 }
 
 void Draw()
@@ -118,11 +143,25 @@ void Draw()
         if (isBulletFound) {
             continue;
         }
+        
+        bool isEnemyFound = false;
+        
+        for (int k = 0; k < 25; k++) {
+            if (enemies[k] && enemies[k][1] == i && enemies[k][0] == j) {
+                isEnemyFound = true;
+                printw("o");
+            }
+        }
+        
+        if (isEnemyFound) {
+            continue;
+        }
 
         printw(" ");
     }
       printw("\n");
   }
+    printw("%d", debug);
     for (int i = 0; i < 3; i++) {
         if (bullets[i]) {
             printw("%d ", bullets[i][0]);
@@ -141,7 +180,6 @@ void Input()
             direction = 0;
             break;
         case 32: {
-//            CreateBullet();
             thread trackBullet(CreateBullet);
             trackBullet.detach();
             return;
@@ -153,6 +191,7 @@ void Input()
 
 void Logic()
 {
+    // move the gun
     switch (direction) {
         case 1:
             gunX++;
@@ -163,12 +202,34 @@ void Logic()
         default:
             break;
     }
+    
+    // check if the enemies are destroyed
+    for (int i = 0; i < 25; i++) {
+        if (enemies[i]) {
+            for (int j = 0; j < 3; j++) {
+                if (bullets[j]) {
+                    if (enemies[i][0] == bullets[j][0] && enemies[i][1] == bullets[j][1]) {
+                        enemies[i] = NULL;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void Setup() {
+    // make sure rand() returns new values each time
+    srand((unsigned int)time(NULL));
 }
 
 int main() {
     initscr();
     noecho();
     nodelay(stdscr, TRUE);
+    // todo: probably create a thread that will create threads
+    thread createEnemy(CreateEnemy);
+    createEnemy.detach();
+    Setup();
     while (true) {
         // First get input from the user, then claculate the changes, then draw the updates
         Input();
@@ -178,8 +239,9 @@ int main() {
         Logic();
         Draw();
         refresh();
-        
     }
-    // endwin();
+//     endwin();
+//    free(bullets);
+//    free(enemies);
     return 0;
 }
