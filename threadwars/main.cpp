@@ -3,6 +3,7 @@
 #include <thread>
 #include <chrono>
 #include <dispatch/dispatch.h>
+#include <mutex>
 
 using namespace std;
 
@@ -32,6 +33,7 @@ bool isGameOver = false;
 
 //sem_t bulletSemaphore;
 dispatch_semaphore_t bulletSemaphore = dispatch_semaphore_create(3);
+mutex bulletMutex;
 
 void CreateBullet() {
     dispatch_semaphore_wait(bulletSemaphore, DISPATCH_TIME_FOREVER);
@@ -42,6 +44,7 @@ void CreateBullet() {
     // max amount of bullets is 3, todo: move it to a constant and initialize during the setup phase
     int indexOfBullet = -1;
     
+    bulletMutex.lock();
     for (int i = 0; i < 3; i++ ) {
         if (!bullets[i]) {
             indexOfBullet = i;
@@ -52,15 +55,20 @@ void CreateBullet() {
             break;
         }
     }
+    bulletMutex.unlock();
     
     bool isBulletOnScreen = true;
     
     while ((isBulletOnScreen = bullets[indexOfBullet][1] > 0)) {
+        bulletMutex.lock();
         bullets[indexOfBullet][1]--;
+        bulletMutex.unlock();
         this_thread::sleep_for(chrono::milliseconds(100));
     }
     
-     bullets[indexOfBullet] = NULL;
+    bulletMutex.lock();
+    bullets[indexOfBullet] = NULL;
+    bulletMutex.unlock();
     
     dispatch_semaphore_signal(bulletSemaphore);
 }
@@ -212,6 +220,9 @@ void Draw()
     if (isGameOver) {
         printw("GAME OVER\n");
     }
+    
+    printw("Chance of an enemy spawn: ");
+    printw("%d\n", chanceOfEnemySpawn);
 //    for (int i = 0; i < 3; i++) {
 //        if (bullets[i]) {
 //            printw("%d ", bullets[i][0]);
@@ -278,6 +289,11 @@ void Logic()
                         // todo: Find out why the application crashes if we set the value to NULL;
                         enemies[i] = new int[2];
                         score++;
+                        
+                        // increase chance of the enemy spawn with each 5 eliminated enemies
+                        if (score != 0 && score % 5 == 0) {
+                            chanceOfEnemySpawn += 10;
+                        }
                     }
                 }
             }
@@ -286,11 +302,6 @@ void Logic()
     
     if (shouldExit || misses == 30) {
         exit(0);
-    }
-    
-    // increase chance of the enemy spawn with each 5 eliminated enemies
-    if (score != 0 && score % 5 == 0) {
-        chanceOfEnemySpawn += 10;
     }
 }
 
