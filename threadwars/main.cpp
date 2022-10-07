@@ -89,7 +89,7 @@ void MoveEnemy(int enemy[], int i) {
     enemy[1] = 1 + (rand() % 2);
     
     // enemy offensive logic
-    while (enemy && enemy[0]) {
+    while (enemies[i] && enemies[i][0]) {
         int maxDirectionNumber = 1;
         int minDirectionNumber = -1;
         // todo: move to the application config
@@ -106,6 +106,7 @@ void MoveEnemy(int enemy[], int i) {
             misses++;
             // todo find out why the application crashes if we assign a NULL pointer
             enemies[i] = new int[2];
+            return;
         }
         
         this_thread::sleep_for(chrono::milliseconds(1000));
