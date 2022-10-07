@@ -34,6 +34,7 @@ bool isGameOver = false;
 
 //sem_t bulletSemaphore;
 dispatch_semaphore_t bulletSemaphore = dispatch_semaphore_create(3);
+dispatch_semaphore_t gameProcessSemaphore = dispatch_semaphore_create(1);
 mutex bulletMutex;
 
 void CreateBullet() {
@@ -115,9 +116,7 @@ void MoveEnemy(int enemy[], int i) {
 
 void CreateEnemy() {
     while (true) {
-        if (!isGameStarted || isGameOver) {
-            continue;
-        }
+        dispatch_semaphore_wait(gameProcessSemaphore, DISPATCH_TIME_FOREVER);
         // calculate chance of enemy spawn
         int chance = rand() % 101;
         
@@ -149,6 +148,7 @@ void CreateEnemy() {
         }
             
         this_thread::sleep_for(chrono::milliseconds(1000));
+        dispatch_semaphore_signal(gameProcessSemaphore);
     }
 }
 
@@ -156,6 +156,7 @@ void StartGame() {
     while (true) {
         if (timeBeforeGameStarted == 0) {
             isGameStarted = true;
+            dispatch_semaphore_signal(gameProcessSemaphore);
             return;
         }
         
@@ -266,6 +267,7 @@ void Input()
         }
         case 10: // enter
             isGameStarted = true;
+            dispatch_semaphore_signal(gameProcessSemaphore);
             break;
         case 88: // esc
             shouldExit = true;
@@ -328,6 +330,8 @@ void Logic()
 void Setup() {
     // make sure rand() returns new values each time
     srand((unsigned int)time(NULL));
+    
+    dispatch_semaphore_wait(gameProcessSemaphore, DISPATCH_TIME_FOREVER);
 }
 
 int main() {
