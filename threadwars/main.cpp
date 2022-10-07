@@ -27,6 +27,8 @@ int misses = 0;
 bool isGameStarted = false;
 bool shouldExit = false;
 
+int timeBeforeGameStarted = 15000;
+
 //sem_t bulletSemaphore;
 dispatch_semaphore_t bulletSemaphore = dispatch_semaphore_create(3);
 
@@ -130,8 +132,16 @@ void CreateEnemy() {
 }
 
 void StartGame() {
-    this_thread::sleep_for(chrono::milliseconds(15000));
-    isGameStarted = true;
+    while (true) {
+        if (timeBeforeGameStarted == 0) {
+            isGameStarted = true;
+            return;
+        }
+        
+        timeBeforeGameStarted -= 1000;
+        
+        this_thread::sleep_for(chrono::milliseconds(1000));
+    }
 }
 
 void Draw()
@@ -189,8 +199,11 @@ void Draw()
     printw("Misses: ");
     printw("%d\n", misses);
     
-    if (isGameStarted) {
-        printw("GAME STARTED");
+    if (!isGameStarted) {
+        printw("GAME STARTS IN ");
+        printw("%d\n", timeBeforeGameStarted / 1000);
+    } else {
+        printw("GAME STARTED\n");
     }
 //    for (int i = 0; i < 3; i++) {
 //        if (bullets[i]) {
@@ -230,11 +243,21 @@ void Logic()
     // move the gun
     switch (direction) {
         case 1:
-            gunX++;
+        {
+            // account for the walls
+            if (gunX < width - 1) {
+                gunX++;
+            }
             break;
+        }
         case 0:
-            gunX--;
+        {
+            // account for the walls
+            if (gunX > 1) {
+                gunX--;
+            }
             break;
+        }
         default:
             break;
     }
