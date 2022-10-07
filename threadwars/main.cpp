@@ -2,6 +2,7 @@
 #include <ncurses.h>
 #include <thread>
 #include <chrono>
+#include <dispatch/dispatch.h>
 
 using namespace std;
 
@@ -20,22 +21,18 @@ int direction = -1;
 int** bullets = new int*[3];
 int** enemies = new int*[25];
 
+int score = 0;
+int misses = 0;
+
+bool isGameStarted = false;
+bool shouldExit = false;
+
+//sem_t bulletSemaphore;
+dispatch_semaphore_t bulletSemaphore = dispatch_semaphore_create(3);
+
 void CreateBullet() {
+    dispatch_semaphore_wait(bulletSemaphore, DISPATCH_TIME_FOREVER);
     int bullet[2] = { gunX, gunY };
-    
-    int bulletsOnTheScreen = 0;
-    
-    // check how many bullets do we already have
-    for (int i = 0; i < 3; i++) {
-        if (bullets[i]) {
-            bulletsOnTheScreen++;
-        }
-    }
-    
-    // no need to fire new bullets is the maximum amount was reached
-    if (bulletsOnTheScreen == 3) {
-        return;
-    }
         
     // Adding a next bullet to the array (fire the bullet)
     
@@ -61,10 +58,15 @@ void CreateBullet() {
     }
     
      bullets[indexOfBullet] = NULL;
+    
+    dispatch_semaphore_signal(bulletSemaphore);
 }
 
 void CreateEnemy() {
     while (true) {
+        if (!isGameStarted) {
+            continue;
+        }
         // calculate chance of enemy spawn
         int chance = rand() % 101;
         
@@ -87,7 +89,7 @@ void CreateEnemy() {
             }
             
             for (int i = 0; i < 25; i++) {
-                if (!enemies[i]) {
+                if (!enemies[i] || !enemies[i][0]) {
                     enemies[i] = new int[2];
                     enemies[i][0] = rand() % width;
                     enemies[i][1] = 1 + (rand() % 2);
@@ -99,8 +101,9 @@ void CreateEnemy() {
             
         this_thread::sleep_for(chrono::milliseconds(1000));
         
+        // enemies advance logic
         for (int i = 0; i < 25; i++) {
-            if (enemies[i]) {
+            if (enemies[i] && enemies[i][0]) {
                 int maxDirectionNumber = 1;
                 int minDirectionNumber = -1;
                 // todo: move to the application config
@@ -112,7 +115,22 @@ void CreateEnemy() {
                 enemies[i][1] += 1;
             }
         }
+        
+        // check if there are misses
+        for (int i = 0; i < 25; i++) {
+            if (enemies[i] && enemies[i][0]) {
+                if (enemies[i][1] == height - 1) {
+                    misses++;
+                    enemies[i] = new int[2];
+                }
+            }
+        }
     }
+}
+
+void StartGame() {
+    this_thread::sleep_for(chrono::milliseconds(15000));
+    isGameStarted = true;
 }
 
 void Draw()
@@ -161,13 +179,24 @@ void Draw()
     }
       printw("\n");
   }
-    printw("%d", debug);
-    for (int i = 0; i < 3; i++) {
-        if (bullets[i]) {
-            printw("%d ", bullets[i][0]);
-            printw("%d\n\n", bullets[i][1]);
-        }
+    printw("Debug: ");
+    printw("%d\n", debug);
+    
+    printw("Hits: ");
+    printw("%d\n", score);
+    
+    printw("Misses: ");
+    printw("%d\n", misses);
+    
+    if (isGameStarted) {
+        printw("GAME STARTED");
     }
+//    for (int i = 0; i < 3; i++) {
+//        if (bullets[i]) {
+//            printw("%d ", bullets[i][0]);
+//            printw("%d\n\n", bullets[i][1]);
+//        }
+//    }
 }
 
 void Input()
@@ -179,11 +208,17 @@ void Input()
         case 68:    // key left
             direction = 0;
             break;
-        case 32: {
+        case 32: { // space
             thread trackBullet(CreateBullet);
             trackBullet.detach();
             return;
         }
+        case 10: // enter
+            isGameStarted = true;
+            break;
+        case 88: // esc
+            shouldExit = true;
+            break;
         default:
             direction = -1;
     }
@@ -209,11 +244,17 @@ void Logic()
             for (int j = 0; j < 3; j++) {
                 if (bullets[j]) {
                     if (enemies[i][0] == bullets[j][0] && enemies[i][1] == bullets[j][1]) {
-                        enemies[i] = NULL;
+                        // todo: Find out why the application crashes if we set the value to NULL;
+                        enemies[i] = new int[2];
+                        score++;
                     }
                 }
             }
         }
+    }
+    
+    if (shouldExit) {
+        exit(0);
     }
 }
 
@@ -229,6 +270,7 @@ int main() {
     // todo: probably create a thread that will create threads
     thread createEnemy(CreateEnemy);
     createEnemy.detach();
+    thread startGame(StartGame);
     Setup();
     while (true) {
         // First get input from the user, then claculate the changes, then draw the updates
@@ -240,8 +282,5 @@ int main() {
         Draw();
         refresh();
     }
-//     endwin();
-//    free(bullets);
-//    free(enemies);
     return 0;
 }
