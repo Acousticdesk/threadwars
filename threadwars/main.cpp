@@ -4,6 +4,7 @@
 #include <chrono>
 #include <dispatch/dispatch.h>
 #include <mutex>
+#include <fstream>
 
 using namespace std;
 
@@ -13,7 +14,7 @@ int height = 25;
 int gunX = width / 2;
 int gunY = height - 1;
 int debug = 0;
-int chanceOfEnemySpawn = 20;
+int chanceOfEnemySpawn = 30;
 
 int enemyTimerMs = 1000;
 
@@ -36,7 +37,12 @@ dispatch_semaphore_t bulletSemaphore = dispatch_semaphore_create(3);
 mutex bulletMutex;
 
 void CreateBullet() {
-    dispatch_semaphore_wait(bulletSemaphore, DISPATCH_TIME_FOREVER);
+    int semaphoreWaitResult = dispatch_semaphore_wait(bulletSemaphore, DISPATCH_TIME_NOW);
+    
+    if (semaphoreWaitResult != 0) {
+        return;
+    }
+    
     int bullet[2] = { gunX, gunY };
         
     // Adding a next bullet to the array (fire the bullet)
@@ -80,8 +86,6 @@ void CreateEnemy() {
         }
         // calculate chance of enemy spawn
         int chance = rand() % 101;
-        
-        debug = chance;
         
         if (chance < chanceOfEnemySpawn) {
         
