@@ -80,7 +80,7 @@ void CreateBullet() {
 }
 
 // an enemy is an item of the enemies array
-void MoveEnemy(int enemy[]) {
+void MoveEnemy(int enemy[], int i) {
     // enemy[0] = x coordinate
     // enemy[1] = y coordinate
     
@@ -89,7 +89,7 @@ void MoveEnemy(int enemy[]) {
     enemy[1] = 1 + (rand() % 2);
     
     // enemy offensive logic
-    while (enemy) {
+    while (enemy && enemy[0]) {
         int maxDirectionNumber = 1;
         int minDirectionNumber = -1;
         // todo: move to the application config
@@ -100,7 +100,15 @@ void MoveEnemy(int enemy[]) {
             enemy[0] += nextDirection;
         }
         enemy[1] += 1;
-        this_thread::sleep_for(chrono::milliseconds(1000));
+        
+        // check if enemy reached the player's safe zone
+        if (enemy[1] == height - 1) {
+            misses++;
+            // todo find out why the application crashes if we assign a NULL pointer
+            enemies[i] = new int[2];
+        }
+        
+        this_thread::sleep_for(chrono::milliseconds(100));
     }
 }
 
@@ -118,7 +126,7 @@ void CreateEnemy() {
             int enemiesCount = 0;
             
             for (int i = 0; i < 25; i++) {
-                if (enemies[i]) {
+                if (enemies[i] && enemies[i][0]) {
                     enemiesCount++;
                 }
             }
@@ -131,7 +139,7 @@ void CreateEnemy() {
             for (int i = 0; i < 25; i++) {
                 if (!enemies[i] || !enemies[i][0]) {
                     enemies[i] = new int[2];
-                    thread moveEnemy(MoveEnemy, enemies[i]);
+                    thread moveEnemy(MoveEnemy, enemies[i], i);
                     moveEnemy.detach();
                     // add a single enemy, then sleep for 1 second
                     break;
@@ -139,17 +147,7 @@ void CreateEnemy() {
             }
         }
             
-        this_thread::sleep_for(chrono::milliseconds(1000));
-                
-        // check if there are misses
-        for (int i = 0; i < 25; i++) {
-            if (enemies[i] && enemies[i][0]) {
-                if (enemies[i][1] == height - 1) {
-                    misses++;
-                    enemies[i] = new int[2];
-                }
-            }
-        }
+        this_thread::sleep_for(chrono::milliseconds(100));
     }
 }
 
@@ -236,6 +234,13 @@ void Draw()
     
     printw("Chance of an enemy spawn: ");
     printw("%d\n", chanceOfEnemySpawn);
+    
+    for (int i = 0; i < 25; i++) {
+        if (enemies[i]) {
+            printw("%d ", enemies[i][0]);
+            printw("%d\n", enemies[i][1]);
+        }
+    }
 //    for (int i = 0; i < 3; i++) {
 //        if (bullets[i]) {
 //            printw("%d ", bullets[i][0]);
@@ -313,7 +318,8 @@ void Logic()
         }
     }
     
-    if (shouldExit || misses == 30) {
+    // there are cases when two enemies advance simultaneosly which can increment from 29 to 31 directly
+    if (shouldExit || misses >= 30) {
         exit(0);
     }
 }
