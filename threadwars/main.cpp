@@ -28,6 +28,7 @@ bool isGameStarted = false;
 bool shouldExit = false;
 
 int timeBeforeGameStarted = 15000;
+bool isGameOver = false;
 
 //sem_t bulletSemaphore;
 dispatch_semaphore_t bulletSemaphore = dispatch_semaphore_create(3);
@@ -66,7 +67,7 @@ void CreateBullet() {
 
 void CreateEnemy() {
     while (true) {
-        if (!isGameStarted) {
+        if (!isGameStarted || isGameOver) {
             continue;
         }
         // calculate chance of enemy spawn
@@ -199,11 +200,17 @@ void Draw()
     printw("Misses: ");
     printw("%d\n", misses);
     
-    if (!isGameStarted) {
-        printw("GAME STARTS IN ");
-        printw("%d\n", timeBeforeGameStarted / 1000);
-    } else {
-        printw("GAME STARTED\n");
+    if (!isGameOver) {
+        if (!isGameStarted) {
+            printw("GAME STARTS IN ");
+            printw("%d\n", timeBeforeGameStarted / 1000);
+        } else {
+            printw("GAME STARTED\n");
+        }
+    }
+    
+    if (isGameOver) {
+        printw("GAME OVER\n");
     }
 //    for (int i = 0; i < 3; i++) {
 //        if (bullets[i]) {
