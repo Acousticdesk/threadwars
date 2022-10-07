@@ -109,7 +109,8 @@ void CreateEnemy() {
                 // todo: move to the application config
                 // nextDirection shall be random so that a user doesn't know where to move the gun preventively
                 int nextDirection = rand() % (maxDirectionNumber + 1 - minDirectionNumber) + minDirectionNumber;
-                if (enemies[i][0] + nextDirection < width) {
+                // 1 because we need to account for the wall
+                if (enemies[i][0] + nextDirection < width && enemies[i][0] + nextDirection > 1) {
                     enemies[i][0] += nextDirection;
                 }
                 enemies[i][1] += 1;
@@ -255,6 +256,11 @@ void Logic()
     
     if (shouldExit) {
         exit(0);
+    }
+    
+    // increase chance of the enemy spawn with each 5 eliminated enemies
+    if (score != 0 && score % 5 == 0) {
+        chanceOfEnemySpawn += 10;
     }
 }
 
