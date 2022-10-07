@@ -254,7 +254,7 @@ void Logic()
         }
     }
     
-    if (shouldExit) {
+    if (shouldExit || misses == 30) {
         exit(0);
     }
     
