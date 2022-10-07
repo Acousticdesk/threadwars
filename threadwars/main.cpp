@@ -316,7 +316,9 @@ void Setup() {
 
 int main() {
     initscr();
+    // a user can't type in the terminal
     noecho();
+    // getch is asynchronous and does not block the whole flow
     nodelay(stdscr, TRUE);
     // todo: probably create a thread that will create threads
     thread createEnemy(CreateEnemy);
