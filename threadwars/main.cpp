@@ -108,7 +108,7 @@ void MoveEnemy(int enemy[], int i) {
             enemies[i] = new int[2];
         }
         
-        this_thread::sleep_for(chrono::milliseconds(100));
+        this_thread::sleep_for(chrono::milliseconds(1000));
     }
 }
 
@@ -147,7 +147,7 @@ void CreateEnemy() {
             }
         }
             
-        this_thread::sleep_for(chrono::milliseconds(100));
+        this_thread::sleep_for(chrono::milliseconds(1000));
     }
 }
 
