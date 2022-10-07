@@ -79,6 +79,31 @@ void CreateBullet() {
     dispatch_semaphore_signal(bulletSemaphore);
 }
 
+// an enemy is an item of the enemies array
+void MoveEnemy(int enemy[]) {
+    // enemy[0] = x coordinate
+    // enemy[1] = y coordinate
+    
+    // find a random location to spawn an enemy in the boundary of the battlefield
+    enemy[0] = rand() % width;
+    enemy[1] = 1 + (rand() % 2);
+    
+    // enemy offensive logic
+    while (enemy) {
+        int maxDirectionNumber = 1;
+        int minDirectionNumber = -1;
+        // todo: move to the application config
+        // nextDirection shall be random so that a user doesn't know where to move the gun preventively
+        int nextDirection = rand() % (maxDirectionNumber + 1 - minDirectionNumber) + minDirectionNumber;
+        // 1 because we need to account for the wall
+        if (enemy[0] + nextDirection < width && enemy[0] + nextDirection > 1) {
+            enemy[0] += nextDirection;
+        }
+        enemy[1] += 1;
+        this_thread::sleep_for(chrono::milliseconds(1000));
+    }
+}
+
 void CreateEnemy() {
     while (true) {
         if (!isGameStarted || isGameOver) {
@@ -100,14 +125,14 @@ void CreateEnemy() {
             
             // we don't need to create more than MAX_ENEMIES enemies
             if (enemiesCount == 25) {
-                return;
+                continue;
             }
             
             for (int i = 0; i < 25; i++) {
                 if (!enemies[i] || !enemies[i][0]) {
                     enemies[i] = new int[2];
-                    enemies[i][0] = rand() % width;
-                    enemies[i][1] = 1 + (rand() % 2);
+                    thread moveEnemy(MoveEnemy, enemies[i]);
+                    moveEnemy.detach();
                     // add a single enemy, then sleep for 1 second
                     break;
                 }
@@ -115,23 +140,7 @@ void CreateEnemy() {
         }
             
         this_thread::sleep_for(chrono::milliseconds(1000));
-        
-        // enemies advance logic
-        for (int i = 0; i < 25; i++) {
-            if (enemies[i] && enemies[i][0]) {
-                int maxDirectionNumber = 1;
-                int minDirectionNumber = -1;
-                // todo: move to the application config
-                // nextDirection shall be random so that a user doesn't know where to move the gun preventively
-                int nextDirection = rand() % (maxDirectionNumber + 1 - minDirectionNumber) + minDirectionNumber;
-                // 1 because we need to account for the wall
-                if (enemies[i][0] + nextDirection < width && enemies[i][0] + nextDirection > 1) {
-                    enemies[i][0] += nextDirection;
-                }
-                enemies[i][1] += 1;
-            }
-        }
-        
+                
         // check if there are misses
         for (int i = 0; i < 25; i++) {
             if (enemies[i] && enemies[i][0]) {
